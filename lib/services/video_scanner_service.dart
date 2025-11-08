@@ -122,28 +122,31 @@ class VideoScannerService {
           }
         }
 
-        // Try /storage paths for SD card
+        // Try /storage paths for SD card (with permission check)
         try {
-          final storageDir = Directory('/storage');
-          if (await storageDir.exists()) {
-            await for (final entity in storageDir.list()) {
-              if (entity is Directory) {
-                final dirName = path.basename(entity.path);
-                // Skip emulated and self directories
-                if (dirName != 'emulated' && dirName != 'self') {
-                  directories.addAll([
-                    Directory(path.join(entity.path, 'DCIM', 'Camera')),
-                    Directory(path.join(entity.path, 'DCIM')),
-                    Directory(path.join(entity.path, 'Movies')),
-                    Directory(path.join(entity.path, 'Download')),
-                    Directory(path.join(entity.path, 'Videos')),
-                  ]);
+          if (await Permission.manageExternalStorage.isGranted) {
+            final storageDir = Directory('/storage');
+            if (await storageDir.exists()) {
+              await for (final entity in storageDir.list()) {
+                if (entity is Directory) {
+                  final dirName = path.basename(entity.path);
+                  // Skip emulated and self directories
+                  if (dirName != 'emulated' && dirName != 'self') {
+                    directories.addAll([
+                      Directory(path.join(entity.path, 'DCIM', 'Camera')),
+                      Directory(path.join(entity.path, 'DCIM')),
+                      Directory(path.join(entity.path, 'Movies')),
+                      Directory(path.join(entity.path, 'Download')),
+                      Directory(path.join(entity.path, 'Videos')),
+                    ]);
+                  }
                 }
               }
             }
           }
         } catch (e) {
-          debugPrint('Error scanning /storage: $e');
+          // Silently ignore permission errors for /storage
+          debugPrint('Skipping /storage scan: limited permissions');
         }
       } else if (Platform.isIOS) {
         // iOS directories
@@ -166,40 +169,55 @@ class VideoScannerService {
 
     try {
       if (Platform.isAndroid) {
-        // Try common external storage paths
-        final possiblePaths = [
-          '/storage/sdcard1',
-          '/storage/extSdCard',
-          '/storage/external_SD',
-          '/storage/removable/sdcard1',
-          '/mnt/external_sd',
-          '/mnt/sdcard/external_sd',
-        ];
+        // Only try to access external storage if we have proper permissions
+        final hasManagePermission =
+            await Permission.manageExternalStorage.isGranted;
 
-        for (final storagePath in possiblePaths) {
-          final dir = Directory(storagePath);
-          if (await dir.exists()) {
-            storages.add(dir);
+        if (hasManagePermission) {
+          // Try common external storage paths
+          final possiblePaths = [
+            '/storage/sdcard1',
+            '/storage/extSdCard',
+            '/storage/external_SD',
+            '/storage/removable/sdcard1',
+          ];
+
+          for (final storagePath in possiblePaths) {
+            try {
+              final dir = Directory(storagePath);
+              if (await dir.exists()) {
+                storages.add(dir);
+              }
+            } catch (e) {
+              // Skip paths we can't access
+              continue;
+            }
           }
-        }
 
-        // Also check /storage for mounted SD cards
-        final storageDir = Directory('/storage');
-        if (await storageDir.exists()) {
-          await for (final entity in storageDir.list()) {
-            if (entity is Directory) {
-              final dirName = path.basename(entity.path);
-              if (dirName != 'emulated' &&
-                  dirName != 'self' &&
-                  !dirName.startsWith('sdcard')) {
-                storages.add(entity);
+          // Also check /storage for mounted SD cards
+          try {
+            final storageDir = Directory('/storage');
+            if (await storageDir.exists()) {
+              await for (final entity in storageDir.list()) {
+                if (entity is Directory) {
+                  final dirName = path.basename(entity.path);
+                  if (dirName != 'emulated' &&
+                      dirName != 'self' &&
+                      !dirName.startsWith('sdcard')) {
+                    storages.add(entity);
+                  }
+                }
               }
             }
+          } catch (e) {
+            // Silently skip if we can't list /storage
+            debugPrint('Skipping /storage listing: limited permissions');
           }
         }
       }
     } catch (e) {
-      debugPrint('Error getting external storage directories: $e');
+      // Silently handle permission errors
+      debugPrint('Skipping external storage scan: limited permissions');
     }
 
     return storages;
@@ -300,11 +318,21 @@ class VideoScannerService {
       }
 
       status = await Permission.storage.request();
-      return status.isGranted;
+      if (status.isGranted) {
+        return true;
+      }
+
+      // If basic permissions granted but limited, still allow scanning
+      // (scoped storage will limit access to media files only)
+      if (status.isLimited) {
+        return true;
+      }
+
+      return false;
     } else if (Platform.isIOS) {
       // iOS uses photo library permission
       final status = await Permission.photos.request();
-      return status.isGranted;
+      return status.isGranted || status.isLimited;
     }
 
     return true; // For other platforms, assume permission granted

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
@@ -62,11 +64,18 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
     final currentOrientation = MediaQuery.of(context).orientation;
     final isCurrentlyLandscape = currentOrientation == Orientation.landscape;
 
+    log('🔄 CustomVideoPlayer: Rotate button pressed');
+    log('   - Current orientation from MediaQuery: $currentOrientation');
+    log('   - _currentOrientation state: $_currentOrientation');
+    log('   - isCurrentlyLandscape: $isCurrentlyLandscape');
+
     if (isCurrentlyLandscape) {
       // Currently landscape - rotate to portrait
-      await OrientationService.lockPortrait();
+      log('   - Action: Rotating to portrait');
+      await OrientationService.forcePortrait();
     } else {
       // Currently portrait - rotate to landscape
+      log('   - Action: Rotating to landscape');
       await OrientationService.forceLandscape();
     }
 
@@ -159,6 +168,9 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
           builder: (context, orientation) {
             // Update orientation state immediately
             if (_currentOrientation != orientation) {
+              log('📱 OrientationBuilder: Orientation changed');
+              log('   - Old: $_currentOrientation');
+              log('   - New: $orientation');
               _currentOrientation = orientation;
             }
 
@@ -166,6 +178,24 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
             final aspectRatio = controller.value.aspectRatio;
             final screenSize = MediaQuery.of(context).size;
             final isLandscape = orientation == Orientation.landscape;
+
+            log('📐 Building video player:');
+            log('   - Orientation: $orientation');
+            log('   - Screen size: ${screenSize.width}x${screenSize.height}');
+            log('   - Video aspect ratio: $aspectRatio');
+            log(
+              '   - Video size: ${controller.value.size.width}x${controller.value.size.height}',
+            );
+            log('   - Is landscape: $isLandscape');
+
+            // Calculate expected video dimensions
+            final videoWidth = isLandscape
+                ? screenSize.width
+                : screenSize.width;
+            final videoHeight = isLandscape
+                ? screenSize.width / aspectRatio
+                : screenSize.width / aspectRatio;
+            log('   - Expected video display: ${videoWidth}x$videoHeight');
 
             return SizedBox.expand(
               child: Stack(
@@ -175,23 +205,10 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
                   Container(
                     color: Colors.black,
                     child: Center(
-                      child: isLandscape
-                          ? FittedBox(
-                              fit: BoxFit.contain,
-                              child: SizedBox(
-                                width: screenSize.height * aspectRatio,
-                                height: screenSize.height,
-                                child: VideoPlayer(controller),
-                              ),
-                            )
-                          : FittedBox(
-                              fit: BoxFit.contain,
-                              child: SizedBox(
-                                width: screenSize.width,
-                                height: screenSize.width / aspectRatio,
-                                child: VideoPlayer(controller),
-                              ),
-                            ),
+                      child: AspectRatio(
+                        aspectRatio: aspectRatio,
+                        child: VideoPlayer(controller),
+                      ),
                     ),
                   ),
                   // Overlay with controls and gestures - on top of video

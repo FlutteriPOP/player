@@ -23,14 +23,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Future<void> _setupScreen() async {
+    debugPrint('🎬 VideoPlayerScreen: Setting up screen');
+
     // Enable wakelock to keep screen on during video playback
+    debugPrint('   - Enabling wakelock');
     await WakelockPlus.enable();
 
     // Use a small delay to ensure the screen is fully built
+    debugPrint('   - Waiting for screen to build');
     await Future.delayed(const Duration(milliseconds: 100));
 
     // Enable all orientations so user can rotate freely
+    debugPrint('   - Enabling all orientations');
     await OrientationService.enableAllOrientations();
+
+    debugPrint('✅ VideoPlayerScreen: Setup complete');
   }
 
   @override
@@ -40,15 +47,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Future<void> _cleanupScreen() async {
+    debugPrint('🧹 VideoPlayerScreen: Cleaning up screen');
+
     // Pause video when leaving
     final provider = Provider.of<VideoProvider>(context, listen: false);
+    debugPrint('   - Pausing video');
     provider.videoPlayerController?.pause();
 
     // Disable wakelock
+    debugPrint('   - Disabling wakelock');
     await WakelockPlus.disable();
 
     // Lock back to portrait when leaving video player
+    debugPrint('   - Locking to portrait');
     await OrientationService.lockPortrait();
+
+    debugPrint('✅ VideoPlayerScreen: Cleanup complete');
   }
 
   @override
