@@ -1,0 +1,37 @@
+name: player
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  video_player: ^2.10.0
+  file_picker: ^10.3.3
+  permission_handler: ^12.0.1
+  provider: ^6.1.5
+  path_provider: ^2.1.5
+  path: ^1.9.0
+  shared_preferences: ^2.5.3
+  flutter_animate: ^4.5.2
+  google_fonts: ^6.3.2
+  screen_brightness: ^2.1.7
+  volume_controller: ^3.4.0
+  wakelock_plus: ^1.4.0
+  video_thumbnail: ^0.5.6  # Generate video thumbnails
+  flutter_slidable: ^4.0.3  # Swipe actions for video list
+  intl: ^0.20.2  # Date/time formatting
+  fluttertoast: ^9.0.0  # Toast notifications
+  share_plus: ^12.0.1  # Share videos
+  flutter_staggered_animations: ^1.1.1  # List animations
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
